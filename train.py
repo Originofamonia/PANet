@@ -2,6 +2,7 @@
 import os
 import shutil
 
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim
@@ -67,20 +68,21 @@ def main(_run, _config, _log):
         dataset,
         batch_size=_config['batch_size'],
         shuffle=True,
-        num_workers=1,
+        num_workers=4,
         pin_memory=True,
         drop_last=True
     )
 
-    _log.info('###### Set optimizer ######')
+    _log.info('Set optimizer')
+    print(_config)
     optimizer = torch.optim.SGD(model.parameters(), **_config['optim'])
     scheduler = MultiStepLR(optimizer, milestones=_config['lr_milestones'], gamma=0.1)
     criterion = nn.CrossEntropyLoss(ignore_index=_config['ignore_label'])
 
     i_iter = 0
     log_loss = {'loss': 0, 'align_loss': 0}
-    _log.info('###### Training ######')
-    for i_iter, sample_batched in enumerate(trainloader):
+    _log.info('Training:')
+    for i_iter, sample_batched in tqdm(enumerate(trainloader), total=len(trainloader), desc="Training", leave=True):
         # Prepare input
         support_images = [[shot.cuda() for shot in way]
                           for way in sample_batched['support_images']]
@@ -117,7 +119,7 @@ def main(_run, _config, _log):
         if (i_iter + 1) % _config['print_interval'] == 0:
             loss = log_loss['loss'] / (i_iter + 1)
             align_loss = log_loss['align_loss'] / (i_iter + 1)
-            print(f'step {i_iter+1}: loss: {loss}, align_loss: {align_loss}')
+            tqdm.write(f"step {i_iter+1}: loss: {loss:.4f}, align_loss: {align_loss:.4f}")
 
         if (i_iter + 1) % _config['save_pred_every'] == 0:
             _log.info('###### Taking snapshot ######')
@@ -127,3 +129,7 @@ def main(_run, _config, _log):
     _log.info('###### Saving final model ######')
     torch.save(model.state_dict(),
                os.path.join(f'{_run.observers[0].dir}/snapshots', f'{i_iter + 1}.pth'))
+
+
+# if __name__ == '__main__':
+#     main()

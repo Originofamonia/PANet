@@ -25,17 +25,16 @@ for source_file in sources_to_save:
 def cfg():
     """Default configurations"""
     input_size = (417, 417)
-    seed = 1234
-    cuda_visable = '0, 1, 2, 3, 4, 5, 6, 7'
-    gpu_id = 0
+    seed = 8964
+    cuda_visable = '0, 1'
+    gpu_id = 1
     mode = 'test' # 'train' or 'test'
-
+    dataset = 'COCO'  # 'VOC' or 'COCO'
 
     if mode == 'train':
-        dataset = 'VOC'  # 'VOC' or 'COCO'
-        n_steps = 30000
+        n_steps = 1000
         label_sets = 0
-        batch_size = 1
+        batch_size = 8
         lr_milestones = [10000, 20000, 30000]
         align_loss_scaler = 1
         ignore_label = 255
@@ -60,7 +59,7 @@ def cfg():
 
     elif mode == 'test':
         notrain = False
-        snapshot = './runs/PANet_VOC_sets_0_1way_1shot_[train]/1/snapshots/30000.pth'
+        snapshot = f'./runs/PANet_{dataset}_align_sets_0_1way_1shot_[train]/10/snapshots/1000.pth'
         n_runs = 5
         n_steps = 1000
         batch_size = 1
@@ -74,7 +73,7 @@ def cfg():
         elif 'COCO' in snapshot:
             dataset = 'COCO'
         else:
-            raise ValueError('Wrong snapshot name !')
+            raise ValueError('Wrong snapshot name!')
 
         # Set model config from the snapshot string
         model = {}
@@ -92,7 +91,7 @@ def cfg():
         }
 
     else:
-        raise ValueError('Wrong configuration for "mode" !')
+        raise ValueError('Wrong configuration for "mode"!')
 
 
     exp_str = '_'.join(
@@ -104,9 +103,9 @@ def cfg():
     path = {
         'log_dir': './runs',
         'init_path': './pretrained_model/vgg16-397923af.pth',
-        'VOC':{'data_dir': '../../data/Pascal/VOCdevkit/VOC2012/',
+        'VOC':{'data_dir': '/home/edward/data/VOCdevkit/VOC2012',
                'data_split': 'trainaug',},
-        'COCO':{'data_dir': '../../data/COCO/',
+        'COCO':{'data_dir': '/home/edward/data/MSCOCO2014',
                 'data_split': 'train',},
     }
 

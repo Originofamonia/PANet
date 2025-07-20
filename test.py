@@ -5,7 +5,7 @@ import shutil
 import tqdm
 import numpy as np
 import torch
-import torch.optim
+# import torch.optim
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.backends.cudnn as cudnn
@@ -38,8 +38,9 @@ def main(_run, _config, _log):
     _log.info('###### Create model ######')
     model = FewShotSeg(pretrained_path=_config['path']['init_path'], cfg=_config['model'])
     model = nn.DataParallel(model.cuda(), device_ids=[_config['gpu_id'],])
+    print(_config)
     if not _config['notrain']:
-        model.load_state_dict(torch.load(_config['snapshot'], map_location='cpu'))
+        model.load_state_dict(torch.load(_config['snapshot'], map_location='cpu', weights_only=True))
     model.eval()
 
 

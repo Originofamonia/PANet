@@ -63,7 +63,7 @@ class Encoder(nn.Module):
                 torch.nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
 
         if self.pretrained_path is not None:
-            dic = torch.load(self.pretrained_path, map_location='cpu')
+            dic = torch.load(self.pretrained_path, map_location='cpu', weights_only=True)
             keys = list(dic.keys())
             new_dic = self.state_dict()
             new_keys = list(new_dic.keys())
