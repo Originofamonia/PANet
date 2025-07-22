@@ -28,7 +28,7 @@ def cfg():
     seed = 8964
     cuda_visable = '0, 1'
     gpu_id = 1
-    mode = 'test' # 'train' or 'test'
+    mode = 'train' # 'train' or 'test'
     dataset = 'COCO'  # 'VOC' or 'COCO'
 
     if mode == 'train':
@@ -38,7 +38,7 @@ def cfg():
         lr_milestones = [10000, 20000, 30000]
         align_loss_scaler = 1
         ignore_label = 255
-        print_interval = 100
+        print_interval = 50
         save_pred_every = 10000
 
         model = {

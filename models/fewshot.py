@@ -53,18 +53,18 @@ class FewShotSeg(nn.Module):
 
         ###### Extract features ######
         imgs_concat = torch.cat([torch.cat(way, dim=0) for way in supp_imgs]
-                                + [torch.cat(qry_imgs, dim=0),], dim=0)
-        img_fts = self.encoder(imgs_concat)
+                                + [torch.cat(qry_imgs, dim=0),], dim=0)  # [2*B, 3, 417, 417]
+        img_fts = self.encoder(imgs_concat)  # [2*B, 512, 53, 53]
         fts_size = img_fts.shape[-2:]
 
         supp_fts = img_fts[:n_ways * n_shots * batch_size].view(
-            n_ways, n_shots, batch_size, -1, *fts_size)  # Wa x Sh x B x C x H' x W'
+            n_ways, n_shots, batch_size, -1, *fts_size)  # Way x Shot x B x C x H' x W'
         qry_fts = img_fts[n_ways * n_shots * batch_size:].view(
-            n_queries, batch_size, -1, *fts_size)   # N x B x C x H' x W'
+            n_queries, batch_size, -1, *fts_size)   # Way x B x C x H' x W'
         fore_mask = torch.stack([torch.stack(way, dim=0)
-                                 for way in fore_mask], dim=0)  # Wa x Sh x B x H x W
+                                 for way in fore_mask], dim=0)  # Way x Shot x B x H x W
         back_mask = torch.stack([torch.stack(way, dim=0)
-                                 for way in back_mask], dim=0)  # Wa x Sh x B x H x W
+                                 for way in back_mask], dim=0)  # Way x Shot x B x H x W
 
         ###### Compute loss ######
         align_loss = 0
@@ -72,19 +72,19 @@ class FewShotSeg(nn.Module):
         for epi in range(batch_size):
             ###### Extract prototype ######
             supp_fg_fts = [[self.getFeatures(supp_fts[way, shot, [epi]],
-                                             fore_mask[way, shot, [epi]])
+                                             fore_mask[way, shot, [epi]])  # [1, 1, 1, 512]
                             for shot in range(n_shots)] for way in range(n_ways)]
             supp_bg_fts = [[self.getFeatures(supp_fts[way, shot, [epi]],
-                                             back_mask[way, shot, [epi]])
+                                             back_mask[way, shot, [epi]])  # [1, 1, 1, 512]
                             for shot in range(n_shots)] for way in range(n_ways)]
 
             ###### Obtain the prototypes######
-            fg_prototypes, bg_prototype = self.getPrototype(supp_fg_fts, supp_bg_fts)
+            fg_prototypes, bg_prototype = self.getPrototype(supp_fg_fts, supp_bg_fts)  # [1, 1, 512]
 
             ###### Compute the distance ######
             prototypes = [bg_prototype,] + fg_prototypes
-            dist = [self.calDist(qry_fts[:, epi], prototype) for prototype in prototypes]
-            pred = torch.stack(dist, dim=1)  # N x (1 + Wa) x H' x W'
+            dist = [self.calDist(qry_fts[:, epi], prototype) for prototype in prototypes]  # [2, 1, 53, 53]
+            pred = torch.stack(dist, dim=1)  # N x (1 + Wa) x H' x W', [1, 2, 53, 53]
             outputs.append(F.interpolate(pred, size=img_size, mode='bilinear'))
 
             ###### Prototype alignment loss ######
@@ -145,28 +145,28 @@ class FewShotSeg(nn.Module):
     def alignLoss(self, qry_fts, pred, supp_fts, fore_mask, back_mask):
         """
         Compute the loss for the prototype alignment branch
-
+        The outside is a for loop iterating each pair in the batch, so N==1
         Args:
             qry_fts: embedding features for query images
-                expect shape: N x C x H' x W'
+                expect shape: N x C x H' x W' [1, 512, 53, 53]
             pred: predicted segmentation score
-                expect shape: N x (1 + Wa) x H x W
+                expect shape: N x (1 + Wa) x H x W [1, 2, 53, 53]
             supp_fts: embedding features for support images
-                expect shape: Wa x Sh x C x H' x W'
+                expect shape: Wa x Sh x C x H' x W' [1, 1, 512, 53, 53]
             fore_mask: foreground masks for support images
-                expect shape: way x shot x H x W
+                expect shape: way x shot x H x W [1, 1, 417, 417]
             back_mask: background masks for support images
-                expect shape: way x shot x H x W
+                expect shape: way x shot x H x W [1, 1, 417, 417]
         """
-        n_ways, n_shots = len(fore_mask), len(fore_mask[0])
+        n_ways, n_shots = len(fore_mask), len(fore_mask[0])  # 1, 1
 
         # Mask and get query prototype
         pred_mask = pred.argmax(dim=1, keepdim=True)  # N x 1 x H' x W'
         binary_masks = [pred_mask == i for i in range(1 + n_ways)]
-        skip_ways = [i for i in range(n_ways) if binary_masks[i + 1].sum() == 0]
+        skip_ways = [i for i in range(n_ways) if binary_masks[i + 1].sum() == 0]  # if a class has no mask
         pred_mask = torch.stack(binary_masks, dim=1).float()  # N x (1 + Wa) x 1 x H' x W'
         qry_prototypes = torch.sum(qry_fts.unsqueeze(1) * pred_mask, dim=(0, 3, 4))
-        qry_prototypes = qry_prototypes / (pred_mask.sum((0, 3, 4)) + 1e-5)  # (1 + Wa) x C
+        qry_prototypes = qry_prototypes / (pred_mask.sum((0, 3, 4)) + 1e-5)  # (1 + Wa) x C [2, 512]
 
         # Compute the support loss
         loss = 0
@@ -177,16 +177,17 @@ class FewShotSeg(nn.Module):
             prototypes = [qry_prototypes[[0]], qry_prototypes[[way + 1]]]
             for shot in range(n_shots):
                 img_fts = supp_fts[way, [shot]]
+                # pixel to pixel distance
                 supp_dist = [self.calDist(img_fts, prototype) for prototype in prototypes]
-                supp_pred = torch.stack(supp_dist, dim=1)
+                supp_pred = torch.stack(supp_dist, dim=1)  # [1, 2, 53, 53]
                 supp_pred = F.interpolate(supp_pred, size=fore_mask.shape[-2:],
-                                          mode='bilinear')
+                                          mode='bilinear')  # [1, 2, 417, 417]
                 # Construct the support Ground-Truth segmentation
                 supp_label = torch.full_like(fore_mask[way, shot], 255,
                                              device=img_fts.device).long()
                 supp_label[fore_mask[way, shot] == 1] = 1
                 supp_label[back_mask[way, shot] == 1] = 0
                 # Compute Loss
-                loss = loss + F.cross_entropy(
+                loss += F.cross_entropy(
                     supp_pred, supp_label[None, ...], ignore_index=255) / n_shots / n_ways
         return loss

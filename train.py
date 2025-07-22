@@ -28,21 +28,18 @@ def main(_run, _config, _log):
             _run.observers[0].save_file(source_file, f'source/{source_file}')
         shutil.rmtree(f'{_run.observers[0].basedir}/_sources')
 
-
     set_seed(_config['seed'])
     cudnn.enabled = True
     cudnn.benchmark = True
     torch.cuda.set_device(device=_config['gpu_id'])
     torch.set_num_threads(1)
 
-
-    _log.info('###### Create model ######')
+    _log.info('Create model')
     model = FewShotSeg(pretrained_path=_config['path']['init_path'], cfg=_config['model'])
     model = nn.DataParallel(model.cuda(), device_ids=[_config['gpu_id'],])
     model.train()
 
-
-    _log.info('###### Load data ######')
+    _log.info('Load data')
     data_name = _config['dataset']
     if data_name == 'VOC':
         make_data = voc_fewshot
@@ -85,13 +82,13 @@ def main(_run, _config, _log):
     for i_iter, sample_batched in tqdm(enumerate(trainloader), total=len(trainloader), desc="Training", leave=True):
         # Prepare input
         support_images = [[shot.cuda() for shot in way]
-                          for way in sample_batched['support_images']]
+                          for way in sample_batched['support_images']]  # [K, 1, B, 3, 417, 417]
         support_fg_mask = [[shot[f'fg_mask'].float().cuda() for shot in way]
-                           for way in sample_batched['support_mask']]
+                           for way in sample_batched['support_mask']]  # [K, 1, B, 417, 417], only contains (0, 1)
         support_bg_mask = [[shot[f'bg_mask'].float().cuda() for shot in way]
-                           for way in sample_batched['support_mask']]
+                           for way in sample_batched['support_mask']]  # [K, 1, B, 417, 417], only contains (0, 1)
 
-        query_images = [query_image.cuda()
+        query_images = [query_image.cuda()  # [K, B, 3, 417, 417]
                         for query_image in sample_batched['query_images']]
         query_labels = torch.cat(
             [query_label.long().cuda() for query_label in sample_batched['query_labels']], dim=0)
