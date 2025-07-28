@@ -111,7 +111,6 @@ def main(_run, _config, _log):
         log_loss['loss'] += query_loss
         log_loss['align_loss'] += align_loss
 
-
         # print loss and take snapshots
         if (i_iter + 1) % _config['print_interval'] == 0:
             loss = log_loss['loss'] / (i_iter + 1)

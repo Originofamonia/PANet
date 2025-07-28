@@ -242,16 +242,16 @@ def coco_fewshot(base_dir, split, transforms, to_tensor, labels, n_ways, n_shots
     cocoseg.add_attrib('basic', attrib_basic, {})
 
     # Load image ids for each class
-    cat_ids = cocoseg.coco.getCatIds()
-    sub_ids = [cocoseg.coco.getImgIds(catIds=cat_ids[i - 1]) for i in labels]
-    # Create sub-datasets and add class_id attribute
+    cat_ids = cocoseg.coco.getCatIds()  # all classes, total is 80
+    sub_ids = [cocoseg.coco.getImgIds(catIds=cat_ids[i - 1]) for i in labels]  # each subclass's image ids, total is 60 subclasses
+    # Create sub-datasets and add class_id attribute, each sub class has a dataloader
     subsets = cocoseg.subsets(sub_ids, [{'basic': {'class_id': cat_ids[i - 1]}} for i in labels])
 
     # Choose the classes of queries
     cnt_query = np.bincount(random.choices(population=range(n_ways), k=n_queries),
-                            minlength=n_ways)
+                            minlength=n_ways)  # [1]
     # Set the number of images for each class
-    n_elements = [n_shots + x for x in cnt_query]
+    n_elements = [n_shots + x for x in cnt_query]  # 6 when 5-shot
     # Create paired dataset
     paired_data = PairedDataset(subsets, n_elements=n_elements, max_iters=max_iters, same=False,
                                 pair_based_transforms=[

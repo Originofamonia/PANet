@@ -132,7 +132,7 @@ class PairedDataset(Dataset):
         self.n_elements = n_elements
         self.max_iters = max_iters
         self.pair_based_transforms = pair_based_transforms
-        if same:
+        if same:  # False
             if isinstance(self.n_elements, int):
                 datasets_indices = [random.randrange(self.n_datasets)
                                     for _ in range(self.max_iters)]

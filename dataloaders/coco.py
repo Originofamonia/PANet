@@ -6,8 +6,8 @@ from pycocotools.coco import COCO
 import numpy as np
 from PIL import Image
 import torch
-
 from .common import BaseDataset
+
 
 class COCOSeg(BaseDataset):
     """

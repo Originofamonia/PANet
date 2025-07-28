@@ -27,7 +27,7 @@ def cfg():
     input_size = (417, 417)
     seed = 8964
     cuda_visable = '0, 1'
-    gpu_id = 1
+    gpu_id = 0
     mode = 'train' # 'train' or 'test'
     dataset = 'COCO'  # 'VOC' or 'COCO'
 
@@ -47,7 +47,7 @@ def cfg():
 
         task = {
             'n_ways': 1,
-            'n_shots': 1,
+            'n_shots': 5,
             'n_queries': 1,
         }
 
